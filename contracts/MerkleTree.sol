@@ -3,6 +3,7 @@
 pragma solidity ^0.8.7;
 
 error MerkleTree__TreeLevelsOutOfRange(string message);
+error MerkleTree__IsFull(string message);
 
 //error MerkleTree__IsFull(string message);
 
@@ -74,10 +75,10 @@ contract MerkleTree {
 
     function _insert(bytes32 _leaf) internal returns (uint32 index) {
         uint32 currentIndex = nextIndex;
-        if (currentIndex == uint32(2) ** levels) {
-            currentIndex = 0;
-            nextIndex = 0;
-        }
+        if (currentIndex >= 2 ** levels)
+            revert MerkleTree__IsFull(
+                "Merkle tree is full. No more leafs can be added"
+            );
         nextIndex += 1;
         bytes32 currentLevelHash = _leaf;
         bytes32 left;
