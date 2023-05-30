@@ -20,16 +20,18 @@ export default function SearchBar() {
   return (
     <Flex align="center" justify="center" mt={4}>
       <form onSubmit={handleSearch}>
-        <Input
-          type="text"
-          placeholder="Enter search term"
-          value={searchText}
-          onChange={handleChange}
-          mr={2}
-        />
-        <Button colorScheme="blue" type="submit">
-          Search
-        </Button>
+        <Flex>
+          <Input
+            type="text"
+            placeholder="Enter search term"
+            value={searchText}
+            onChange={handleChange}
+            mr={2}
+          />
+          <Button colorScheme="blue" type="submit">
+            Search
+          </Button>
+        </Flex>
       </form>
     </Flex>
   );

@@ -3,6 +3,8 @@ import { writeContract } from "@wagmi/core";
 import path from "path"
 import { Box, Input, Button } from "@chakra-ui/react";
 import {ethers} from "ethers"; 
+import { buildPoseidon } from "circomlibjs";
+import PostMessage from "./PostMessage";
 
 export default function Insert({_isSelected, _tree}){
     const [isSelected, setIsSelected] = useState(_isSelected);
@@ -11,6 +13,7 @@ export default function Insert({_isSelected, _tree}){
     const [nullifierHash, setNullifierHash] = useState("");
     const [root, setRoot] = useState("");
     const [witness, setWitness] = useState("");
+    const [proof, setProof] = useState("");
 
 
     function poseidonHash(poseidon, inputs) {
@@ -62,6 +65,7 @@ export default function Insert({_isSelected, _tree}){
 
     async function insertIntoTree(e){
         e.preventDefault();
+        console.log("Inserting... ");
         setIsLoading(true);
         const insert = Insert.new(poseidon);
         const tx = await writeContract({
@@ -89,15 +93,20 @@ export default function Insert({_isSelected, _tree}){
 
     return(
         <>
-         <Button
-            colorScheme="blue"
-            disabled={!isSelected}
-            isLoading={isLoading}
-            loadingText="Inserting commitment into the tree"
-            onClick={insertIntoTree}
+         {isSelected ? (
+        <Button
+          colorScheme="blue"
+          isLoading={isLoading}
+          loadingText="Inserting commitment into the tree"
+          onClick={insertIntoTree}
         >
-            Generate Token
+          Generate Proof
         </Button>
+      ) : (
+        <Button isDisabled>
+          Not Selected
+        </Button>)}
+        <PostMessage _nullifierHash={nullifierHash} _root={root} _witness={witness}/>
         </>
     )
 }

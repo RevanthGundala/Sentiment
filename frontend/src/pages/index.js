@@ -1,4 +1,3 @@
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Box, Button, ButtonGroup, Input } from "@chakra-ui/react";
 import { useAccount } from "wagmi";
 import { useState, useEffect } from "react";
@@ -15,14 +14,6 @@ export default function Home() {
   return (
     <>
     <Navbar />
-    <SearchBar />
-    <Box display="flex" alignItems="center" justifyContent="center">
-      <Box display="flex" flexDirection="column" alignItems="center">
-        <Box alignSelf="flex-end" marginTop="20px" marginRight="20px">
-          <ConnectButton />
-        </Box>
-      </Box>
-    </Box>
     </>
   );
 }

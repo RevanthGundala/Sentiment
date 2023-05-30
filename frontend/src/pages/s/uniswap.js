@@ -7,11 +7,7 @@ import {Box, Button} from "@chakra-ui/react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 
-export default function uniswap(){
-    const [message, setMessage] = useState("");
-    const [nullifierHash, setNullifierHash] = useState("");
-    const [root, setRoot] = useState("");
-    const [proof, setProof] = useState("");
+export default function Uniswap(){
     const [selectedAddresses, setSelectedAddresses] = useState(["hello", "goodbye"]);
     const [isSelected, setIsSelected] = useState(false);
     const [tree, setTree] = useState(null);
@@ -20,7 +16,7 @@ export default function uniswap(){
 
 
     useEffect(() => {
-      if(selectedAddresses.find(address)){
+      if(selectedAddresses.includes(address)){
         setIsSelected(true);
       }
     }, [])
@@ -28,16 +24,11 @@ export default function uniswap(){
     return(
         <>
     <Navbar />
-    <SearchBar />
     <Box display="flex" alignItems="center" justifyContent="center">
-      <Box display="flex" flexDirection="column" alignItems="center">
+      <Box display="flex" flexDirection="column" alignItems="center" marginTop="50px">
         <Insert _isSelected={isSelected} _tree={tree}/>
-      <PostMessage _message={message} _nullifierHash={nullifierHash} _root={root} _proof={proof}/>
-        <Box alignSelf="flex-end" marginTop="20px" marginRight="20px">
-          <ConnectButton />
-        </Box>
       </Box>
-      <Box marginLeft="20px">
+      <Box marginLeft="20px" marginTop="20px">
         {selectedAddresses.map((_address, index) => (
           <p key={index}>{_address}</p>
         ))}
