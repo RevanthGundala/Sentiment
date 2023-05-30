@@ -5,8 +5,6 @@ pragma solidity ^0.8.7;
 error MerkleTree__TreeLevelsOutOfRange(string message);
 error MerkleTree__IsFull(string message);
 
-//error MerkleTree__IsFull(string message);
-
 interface IHasher {
     function poseidon(
         bytes32[2] calldata leftRight
@@ -125,5 +123,26 @@ contract MerkleTree {
   */
     function getLastRoot() public view returns (bytes32) {
         return roots[currentRootIndex];
+    }
+
+    function resetTree() internal {
+        delete filledSubtrees;
+        delete zeros;
+        filledSubtrees = new bytes32[](0);
+        zeros = new bytes32[](0);
+        nextIndex = 0;
+        currentRootIndex = 0;
+
+        bytes32 currentZero = bytes32(ZERO_VALUE);
+        zeros.push(currentZero);
+        filledSubtrees.push(currentZero);
+
+        for (uint32 i = 1; i < levels; i++) {
+            currentZero = hashLeftRight(currentZero, currentZero);
+            zeros.push(currentZero);
+            filledSubtrees.push(currentZero);
+        }
+
+        roots[0] = hashLeftRight(currentZero, currentZero);
     }
 }

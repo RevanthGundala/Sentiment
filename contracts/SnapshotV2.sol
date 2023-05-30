@@ -67,7 +67,7 @@ contract SnapshotV2 is
     mapping(bytes32 => bool) public nullifiers;
     mapping(bytes32 => bool) public commitments;
     string[] private messages;
-    event Inserted(bytes32 commitment, uint32 insertedIndex, address wallet);
+    event Inserted(bytes32 commitment, uint32 insertedIndex);
     event messagePosted(string message, bytes32 nullifier);
     event messagesCleared();
 
@@ -185,37 +185,19 @@ contract SnapshotV2 is
         latestResponse = response;
         latestError = err;
         emit OCRResponse(requestId, response, err);
-        uint temp = subscriptionManager.getRandomWords()[0];
-        subscriptionManager.requestRandomWords();
-        uint[] memory randomWords = subscriptionManager.getRandomWords();
-        if (temp == randomWords[0])
-            revert SnapshotV2__RandomWordsNotUpdated(
-                "Random words not updated"
-            );
-
-        for (uint i = 0; i < randomWords.length; i++) {
-            // generate commitment on-chain using vrf
-            uint randomNum = randomWords[i];
-            bytes32 _commitment = keccak256(abi.encodePacked(randomNum));
-            // TODO: Replace with wallet address
-            address wallet = abi.decode(response, (address));
-            insertIntoTree(_commitment, wallet);
-        }
+        clearMessages();
     }
 
     /**
     @dev Calls insert function on merkle tree and emits Inserted event
   */
-    function insertIntoTree(
-        bytes32 _commitment,
-        address wallet
-    ) public nonReentrant {
+    function insertIntoTree(bytes32 _commitment) external nonReentrant {
         if (commitments[_commitment])
             revert SnapshotV2__CommitmentAlreadyUsed("Commitment already used");
 
         uint32 insertedIndex = _insert(_commitment);
         commitments[_commitment] = true;
-        emit Inserted(_commitment, insertedIndex, wallet);
+        emit Inserted(_commitment, insertedIndex);
     }
 
     /**
@@ -256,6 +238,7 @@ contract SnapshotV2 is
     function clearMessages() public {
         delete messages;
         messages = new string[](0);
+        resetTree();
         emit messagesCleared();
     }
 
