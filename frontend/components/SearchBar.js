@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
-import { Input, Button, Flex } from "@chakra-ui/react";
+import { Input, Button, Flex, IconButton } from "@chakra-ui/react";
+import { SearchIcon } from "@chakra-ui/icons";
 
 export default function SearchBar() {
   const router = useRouter();
@@ -28,9 +29,7 @@ export default function SearchBar() {
             onChange={handleChange}
             mr={2}
           />
-          <Button colorScheme="blue" type="submit">
-            Search
-          </Button>
+          <IconButton type="submit" colorScheme="blue" aria-label='Search database' icon={<SearchIcon />} />
         </Flex>
       </form>
     </Flex>

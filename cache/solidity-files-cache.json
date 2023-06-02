@@ -3675,8 +3675,8 @@
       ]
     },
     "/Users/revanthgundala/SnapshotV2/contracts/SnapshotV2.sol": {
-      "lastModificationDate": 1685649843943,
-      "contentHash": "a5103cc27a77c599d931a208a5d300ee",
+      "lastModificationDate": 1685736331428,
+      "contentHash": "ab6d85cded714ea6680b5b66e4ede949",
       "sourceName": "contracts/SnapshotV2.sol",
       "solcConfig": {
         "version": "0.8.9",

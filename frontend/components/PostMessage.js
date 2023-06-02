@@ -1,66 +1,99 @@
 import { useState } from "react";
-import { Box, Input, Button } from "@chakra-ui/react";
+import { Box, Textarea, IconButton, Button, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, ModalCloseButton } from "@chakra-ui/react";
 import { writeContract } from "@wagmi/core";
+import { BsSendFill } from "react-icons/bs";
+import { SNAPSHOTV2_ABI, SNAPSHOTV2_ADDRESS } from "../constants/index";
 
-export default function PostMessage({ _nullifierHash, _root, _witness }) {
-    const [message, setMessage] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
+export default function PostMessage() {
+  const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [root, setRoot] = useState("");
+  const [nullifierHash, setNullifierHash] = useState("");
+  const [witness, setWitness] = useState("");
 
-    async function prove(witness) {
-      const wasmPath = path.join(__dirname, "../circuits/build/post_js/post.wasm");
-      const zkeyPath = path.join(__dirname, "../circuits/build/post_js/post_0001.zkey");
-      const { proof } = await groth16.fullProve(witness, wasmPath, zkeyPath);
-      const solProof = {
-        a: [proof.pi_a[0], proof.pi_a[1]],
-        b: [
-          [proof.pi_b[0][1], proof.pi_b[0][0]],
-          [proof.pi_b[1][1], proof.pi_b[1][0]],
-        ],
-        c: [proof.pi_c[0], proof.pi_c[1]],
-      };
-      return solProof;
-    }
+  async function prove() {
+    // ... your existing code for the `prove` function
+  }
+
+  async function submitProof() {
+    setIsModalOpen(true);
+  }
 
   async function post() {
     setIsLoading(true);
-    const solProof = await prove(_witness);
+    const solProof = await prove(witness);
     await writeContract({
-      address: "",
-      abi: "",
+      address: SNAPSHOTV2_ADDRESS,
+      abi: SNAPSHOTV2_ABI,
       method: "postMessageWithProof",
-      args: [message, _nullifierHash, _root, solProof],
+      args: [message, nullifierHash, root, solProof],
     });
-    console.log("Posted message")
+    console.log("Posted message");
     setIsLoading(false);
+    setIsModalOpen(false);
   }
 
   return (
     <>
-      <Box
-        width="300px"
-        height="300px"
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        border="1px solid gray"
-        borderRadius="8px"
-        margin="20px"
-      >
-        <Input
+      <Box position="relative" width="300px" margin="20px">
+        <Textarea
           placeholder="Type your message"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          width="80%"
+          width="100%"
+          paddingRight="70px" // Adjust the padding to make space for the button
+          resize="vertical" // Allow vertical resizing
+          minHeight="50px" // Set the minimum height
+        />
+        <IconButton
+          colorScheme="blue"
+          isLoading={isLoading}
+          onClick={submitProof}
+          aria-label="Post Message"
+          icon={<BsSendFill />}
+          position="absolute"
+          right="10px" // Adjust the position of the button
+          top="50%" // Center the button vertically
+          transform="translateY(-50%)" // Center the button vertically
         />
       </Box>
-      <Button
-        colorScheme="blue"
-        isLoading={isLoading}
-        loadingText="Submitting Proof"
-        onClick={post}
-      >
-        Post Message
-      </Button>
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Submit Proof</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <Textarea
+              placeholder="Enter your root"
+              value={root}
+              onChange={(e) => setRoot(e.target.value)}
+              resize="vertical"
+              minHeight="100px"
+            />
+            <Textarea
+              placeholder="Enter your nullifier hash"
+              value={nullifierHash}
+              onChange={(e) => setNullifierHash(e.target.value)}
+              resize="vertical"
+              minHeight="100px"
+            />
+            <Textarea
+              placeholder="Enter your witness"
+              value={witness}
+              onChange={(e) => setWitness(e.target.value)}
+              resize="vertical"
+              minHeight="100px"
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="blue" onClick={post}>
+              Submit
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </>
   );
 }

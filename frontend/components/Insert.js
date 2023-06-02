@@ -5,6 +5,7 @@ import { Box, Input, Button } from "@chakra-ui/react";
 import {ethers} from "ethers"; 
 import { buildPoseidon } from "circomlibjs";
 import PostMessage from "./PostMessage";
+import { SNAPSHOTV2_ABI, SNAPSHOTV2_ADDRESS } from "../constants";
 
 export default function Insert({_isSelected}){
     const [isSelected, setIsSelected] = useState(_isSelected);
@@ -19,18 +20,6 @@ export default function Insert({_isSelected}){
         const hashHex = ethers.BigNumber.from(hashStr).toHexString();
         const bytes32 = ethers.utils.hexZeroPad(hashHex, 32);
         return bytes32;
-    }
-
-    class PoseidonHasher {
-        poseidon;
-    
-      constructor(poseidon) {
-        this.poseidon = poseidon;
-      }
-    
-      hash(left, right) {
-        return poseidonHash(this.poseidon, [left, right]);
-      }
     }
     
     class Insert {
@@ -66,8 +55,8 @@ export default function Insert({_isSelected}){
         setIsLoading(true);
         const insert = Insert.new(poseidon);
         const tx = await writeContract({
-            address: "",
-            abi: "",
+            address: SNAPSHOTV2_ADDRESS,
+            abi: SNAPSHOTV2_ABI,
             functionName: "insertIntoTree",
             args: [insert.commitment]
         })
@@ -102,6 +91,8 @@ export default function Insert({_isSelected}){
         }
         // TODO: Show on main screen
         setWitness(_witness);
+        console.log(root);
+        console.log(nullifierHash);
         console.log(witness);
         setIsLoading(false);
     }
@@ -121,7 +112,6 @@ export default function Insert({_isSelected}){
         <Button isDisabled>
           Not Selected
         </Button>)}
-        <PostMessage _nullifierHash={nullifierHash} _root={root} _witness={witness}/>
         </>
     )
 }

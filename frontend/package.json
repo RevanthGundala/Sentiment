@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@chakra-ui/button": "^2.0.18",
+    "@chakra-ui/icons": "^2.0.19",
     "@chakra-ui/react": "^2.6.1",
     "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
@@ -19,6 +20,7 @@
     "next": "13.4.4",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "react-icons": "^4.9.0",
     "viem": "^0.3.38",
     "wagmi": "^1.0.9"
   }

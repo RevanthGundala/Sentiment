@@ -9,7 +9,7 @@ export default function Navbar() {
       <Flex maxW="container.lg" mx="auto" align="center" justify="space-between">
         <Box>
           <Link as={NextLink} href="/" fontSize="xl" fontWeight={"bold"} >
-            SnapshotV2
+            Sentiment
           </Link>
         </Box>
         <Box>

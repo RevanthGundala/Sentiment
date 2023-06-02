@@ -20,6 +20,8 @@ error SnapshotV2__InvalidProof(string message);
 error SnapshotV2__NullifierAlreadyUsed(string message);
 error SnapshotV2__RootNotKnown(string message);
 error SnapshotV2__TimeInterval(string message);
+error SnapshotV2__NotSelected(string message);
+error SnapshotV2__SenderIsNotAutomater(string message);
 
 interface IVerifier {
     function verifyProof(
@@ -85,14 +87,17 @@ contract SnapshotV2 is
         lastUpkeepTimeStamp = block.timestamp;
     }
 
-    modifier onlyAutomater() {
-        // require automation contract == msg.sender
+    modifier onlyAutomater(address walletAddress) {
+        // if (msg.sender != address(automation))
+        //     revert SnapshotV2__SenderIsNotAutomater("Sender is not automater");
         _;
     }
 
     modifier selectedAddress(address walletAddress) {
-        // require selected address == msg.sender
-        require(selectedAddresses[walletAddress], "Address not selected");
+        // For testing only:
+        selectedAddresses[walletAddress] = true;
+        if (!selectedAddresses[walletAddress])
+            revert SnapshotV2__NotSelected("Address not selected");
         _;
     }
 
@@ -227,7 +232,7 @@ contract SnapshotV2 is
     /**
     @dev Deletes the list of messages and emits messagesCleared event
   */
-    function clearMessages() public onlyAutomater {
+    function clearMessages() public onlyAutomater(msg.sender) {
         uint length = names.length;
         for (uint i = 0; i < length; i++) {
             delete messages[names[i]];
@@ -235,6 +240,8 @@ contract SnapshotV2 is
         for (uint i = 0; i < selectedAddressesArray.length; i++) {
             selectedAddresses[selectedAddressesArray[i]] = false;
         }
+        delete selectedAddressesArray;
+        selectedAddressesArray = new address[](0);
         resetTree();
         emit messagesCleared();
     }

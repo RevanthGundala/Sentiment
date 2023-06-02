@@ -105,7 +105,7 @@ describe("SnapshotV2", () => {
         poseidonContractInstance = new ethers.Contract(Poseidon, PoseidonABI, signer);
 
         const snapShotV2ContractFactory = await ethers.getContractFactory("SnapshotV2");
-        args = [Verifier, MERKLE_TREE_HEIGHT, Poseidon]
+        args = [SEPOLIA_FUNCTIONS_ORACLE_ADDRESS, Verifier, MERKLE_TREE_HEIGHT, Poseidon, SUB_ID, FULFILL_GAS_LIMIT]
         snapshotV2 = await snapShotV2ContractFactory.deploy(...args);
         await snapshotV2.deployed();
     });
