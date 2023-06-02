@@ -1,29 +1,39 @@
+const {ethers, network} = require("hardhat");
+const fs = require("fs");
+const {SEPOLIA_FUNCTIONS_ORACLE_ADDRESS, MERKLE_TREE_HEIGHT, SEPOLIA_COORDINATOR_ADDRESS, SEPOLIA_LINK_TOKEN_ADDRESS, SEPOLIA_KEY_HASH, CALLBACK_GAS_LIMIT, REQUEST_CONFIRMATIONS, SUB_ID, FULFILL_GAS_LIMIT} = require("../constants/index.js");
+const {getPoseidonFactory} = require("../constants/poseidon.js");
+
 async function main() {
-  // The oracle address on Polygon Mumbai
-  // See https://docs.chain.link/chainlink-functions/supported-networks
-  // for a list of supported networks and addresses.
-  const oracleAddress = "0x649a2C205BE7A3d5e99206CEEFF30c794f0E31EC";
+  let args;
+  let signer = (await ethers.getSigners())[0];
+  const poseidonContractFactory = getPoseidonFactory(2).connect(signer);
+  const poseidonContract = await poseidonContractFactory.deploy();
+  console.log("Poseidon deployed to:", poseidonContract.address);
 
-  // Set your contract name.
-  const contractName = "FunctionsConsumer";
-  //const contractName = "MyFirstContract"
+  const verifierContractFactory = await ethers.getContractFactory("Verifier");
+  const verifierContract = await verifierContractFactory.deploy();
+  await verifierContract.deployed();
+  console.log("Verifier deployed to:", verifierContract.address);
 
-  const [deployer] = await ethers.getSigners();
+  const VRFv2SubscriptionManagerFactory = await ethers.getContractFactory("VRFv2SubscriptionManager");
+  args = [SEPOLIA_COORDINATOR_ADDRESS, SEPOLIA_LINK_TOKEN_ADDRESS, SEPOLIA_KEY_HASH, REQUEST_CONFIRMATIONS, CALLBACK_GAS_LIMIT, MERKLE_TREE_HEIGHT];
+  const VRFv2SubscriptionManagerContract = await VRFv2SubscriptionManagerFactory.deploy(...args);
+  await VRFv2SubscriptionManagerContract.deployed();
+  console.log("VRFv2SubscriptionManager deployed to:", VRFv2SubscriptionManagerContract.address);
 
-  console.log("Deploying contracts with the account:", deployer.address);
+  const snapShotV2ContractFactory = await ethers.getContractFactory("SnapshotV2");
+  args = [SEPOLIA_FUNCTIONS_ORACLE_ADDRESS, verifierContract.address, MERKLE_TREE_HEIGHT, poseidonContract.address, SUB_ID, FULFILL_GAS_LIMIT]
+  const snapShotV2Contract = await snapShotV2ContractFactory.deploy(...args);
+  await snapShotV2Contract.deployed();
+  console.log("SnapShotV2 deployed to:", snapShotV2Contract.address);
 
-  console.log("Account balance:", (await deployer.getBalance()).toString());
-
-  const consumerContract = await ethers.getContractFactory(contractName);
-
-  const deployedContract = await consumerContract.deploy(oracleAddress);
-
-  console.log("Deployed Functions Consumer address:", deployedContract.address);
+  const message = JSON.stringify({Verifier: verifierContract.address, SnapShotV2: snapShotV2Contract.address, Poseidon: poseidonContract.address, VRFv2SubscriptionManager: VRFv2SubscriptionManagerContract.address}, null, 2);
+  fs.writeFileSync("deployed-contracts.json", message);
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+// We recommend this pattern to be able to use async/await everywhere
+// and properly handle errors.
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

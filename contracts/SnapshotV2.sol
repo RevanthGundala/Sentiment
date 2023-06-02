@@ -7,7 +7,6 @@ import {AutomationCompatibleInterface} from "@chainlink/contracts/src/v0.8/Autom
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./Verifier.sol";
 import "./MerkleTree.sol";
-import "./VRFv2SubscriptionManager.sol";
 
 struct Proof {
     uint256[2] a;
@@ -21,12 +20,6 @@ error SnapshotV2__InvalidProof(string message);
 error SnapshotV2__NullifierAlreadyUsed(string message);
 error SnapshotV2__RootNotKnown(string message);
 error SnapshotV2__TimeInterval(string message);
-
-interface IVRFv2SubscriptionManager {
-    function requestRandomWords() external;
-
-    function getRandomWords() external view returns (uint256[] memory);
-}
 
 interface IVerifier {
     function verifyProof(
@@ -46,11 +39,11 @@ contract SnapshotV2 is
 {
     using Functions for Functions.Request;
 
-    // Chainlink Automation variables
+    // Chainlink automation
     bytes public requestCBOR;
     uint64 public subscriptionId;
     uint32 public fulfillGasLimit;
-    uint256 public constant updateInterval = 2 weeks;
+    uint256 public constant updateInterval = 1 weeks;
     uint256 public lastUpkeepTimeStamp;
     uint256 public upkeepCounter;
     uint256 public responseCounter;
@@ -63,12 +56,14 @@ contract SnapshotV2 is
 
     // Contract Variables
     IVerifier public verifier;
-    IVRFv2SubscriptionManager public subscriptionManager;
     mapping(bytes32 => bool) public nullifiers;
     mapping(bytes32 => bool) public commitments;
-    string[] private messages;
+    mapping(string => string[]) public messages;
+    mapping(address => bool) public selectedAddresses;
+    string[] public names;
+    address[] public selectedAddressesArray;
     event Inserted(bytes32 commitment, uint32 insertedIndex);
-    event messagePosted(string message, bytes32 nullifier);
+    event messagePosted(string message, bytes32 nullifierHash);
     event messagesCleared();
 
     constructor(
@@ -76,7 +71,6 @@ contract SnapshotV2 is
         IVerifier _verifier,
         uint32 _merkleTreeHeight,
         address _hasher,
-        address _subscriptionManager,
         uint64 _subscriptionId,
         uint32 _fulfillGasLimit
     )
@@ -84,12 +78,62 @@ contract SnapshotV2 is
         ConfirmedOwner(msg.sender)
         MerkleTree(_merkleTreeHeight, _hasher)
     {
-        messages = new string[](0);
+        names = new string[](0);
         verifier = _verifier;
-        subscriptionManager = IVRFv2SubscriptionManager(_subscriptionManager);
         subscriptionId = _subscriptionId;
         fulfillGasLimit = _fulfillGasLimit;
         lastUpkeepTimeStamp = block.timestamp;
+    }
+
+    modifier onlyAutomater() {
+        // require automation contract == msg.sender
+        _;
+    }
+
+    modifier selectedAddress(address walletAddress) {
+        // require selected address == msg.sender
+        require(selectedAddresses[walletAddress], "Address not selected");
+        _;
+    }
+
+    /**
+    @dev Calls insert function on merkle tree and emits Inserted event
+  */
+    function insertIntoTree(
+        bytes32 _commitment
+    ) external nonReentrant selectedAddress(msg.sender) {
+        if (commitments[_commitment])
+            revert SnapshotV2__CommitmentAlreadyUsed("Commitment already used");
+
+        uint32 insertedIndex = _insert(_commitment);
+        commitments[_commitment] = true;
+        emit Inserted(_commitment, insertedIndex);
+    }
+
+    /**
+    @dev Posts a message to the merkle tree, emits messagePosted event,
+    and verifies the proof
+  */
+    function postMessageWithProof(
+        string memory name,
+        string memory _message,
+        bytes32 _nullifierHash,
+        bytes32 _root,
+        Proof memory _proof
+    ) external nonReentrant {
+        if (nullifiers[_nullifierHash])
+            revert SnapshotV2__NullifierAlreadyUsed("Nullifier already used");
+
+        if (!isKnownRoot(_root))
+            revert SnapshotV2__RootNotKnown("Root not known");
+
+        uint[2] memory publicInputs = [uint(_root), uint(_nullifierHash)];
+        if (!verifier.verifyProof(_proof.a, _proof.b, _proof.c, publicInputs))
+            revert SnapshotV2__InvalidProof("Invalid proof");
+
+        nullifiers[_nullifierHash] = true;
+        messages[name].push(_message);
+        emit messagePosted(_message, _nullifierHash);
     }
 
     /**
@@ -117,23 +161,6 @@ contract SnapshotV2 is
 
         return req.encodeCBOR();
     }
-
-    /**
-     * @notice Sets the bytes representing the CBOR-encoded Functions.Request that is sent when performUpkeep is called
-
-    * @param _subscriptionId The Functions billing subscription ID used to pay for Functions requests
-    * @param _fulfillGasLimit Maximum amount of gas used to call the client contract's `handleOracleFulfillment` function
-    * @param newRequestCBOR Bytes representing the CBOR-encoded Functions.Request
-    */
-    // function setRequest(
-    //     uint64 _subscriptionId,
-    //     uint32 _fulfillGasLimit,
-    //     bytes calldata newRequestCBOR
-    // ) external onlyOwner {
-    //     subscriptionId = _subscriptionId;
-    //     fulfillGasLimit = _fulfillGasLimit;
-    //     requestCBOR = newRequestCBOR;
-    // }
 
     /**
      * @notice Used by Automation to check if performUpkeep should be called.
@@ -168,15 +195,6 @@ contract SnapshotV2 is
         latestRequestId = requestId;
     }
 
-    /**
-     * * @notice Callback that is invoked once the DON has resolved the request or hit an error
-   *
-   * @param requestId The request ID, returned by sendRequest()
-   * @param response Aggregated response from the user code
-   * @param err Aggregated error from the user code or from the execution pipeline
-    @dev Gets the list of wallets and generates a commitment for each
-    and inserts them into the merkle tree.
-  */
     function fulfillRequest(
         bytes32 requestId,
         bytes memory response,
@@ -186,60 +204,43 @@ contract SnapshotV2 is
         latestError = err;
         emit OCRResponse(requestId, response, err);
         clearMessages();
-    }
-
-    /**
-    @dev Calls insert function on merkle tree and emits Inserted event
-  */
-    function insertIntoTree(bytes32 _commitment) external nonReentrant {
-        if (commitments[_commitment])
-            revert SnapshotV2__CommitmentAlreadyUsed("Commitment already used");
-
-        uint32 insertedIndex = _insert(_commitment);
-        commitments[_commitment] = true;
-        emit Inserted(_commitment, insertedIndex);
-    }
-
-    /**
-    @dev Posts a message to the merkle tree, emits messagePosted event,
-    and verifies the proof
-  */
-    function postMessageWithProof(
-        string memory _message,
-        bytes32 _nullifierHash,
-        bytes32 _root,
-        Proof memory _proof
-    ) external nonReentrant {
-        if (nullifiers[_nullifierHash])
-            revert SnapshotV2__NullifierAlreadyUsed("Nullifier already used");
-
-        if (!isKnownRoot(_root))
-            revert SnapshotV2__RootNotKnown("Root not known");
-
-        uint[2] memory publicInputs = [uint(_root), uint(_nullifierHash)];
-        if (!verifier.verifyProof(_proof.a, _proof.b, _proof.c, publicInputs))
-            revert SnapshotV2__InvalidProof("Invalid proof");
-
-        nullifiers[_nullifierHash] = true;
-        messages.push(_message);
-        emit messagePosted(_message, _nullifierHash);
+        for (uint i = 0; i < response.length; i++) {
+            address wallet = abi.decode(response, (address));
+            selectedAddresses[wallet] = true;
+            selectedAddressesArray.push(wallet);
+        }
     }
 
     /**
     @dev Returns the list of messages
   */
-    function getMessages() external view returns (string[] memory) {
-        return messages;
+    function getMessages(
+        string calldata name
+    ) external view returns (string[] memory) {
+        return messages[name];
+    }
+
+    function getSelectedAddresses() external view returns (address[] memory) {
+        return selectedAddressesArray;
     }
 
     /**
     @dev Deletes the list of messages and emits messagesCleared event
   */
-    function clearMessages() public {
-        delete messages;
-        messages = new string[](0);
+    function clearMessages() public onlyAutomater {
+        uint length = names.length;
+        for (uint i = 0; i < length; i++) {
+            delete messages[names[i]];
+        }
+        for (uint i = 0; i < selectedAddressesArray.length; i++) {
+            selectedAddresses[selectedAddressesArray[i]] = false;
+        }
         resetTree();
         emit messagesCleared();
+    }
+
+    function addName(string memory _name) public {
+        names.push(_name);
     }
 
     /**

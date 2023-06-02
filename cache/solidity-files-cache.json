@@ -3675,8 +3675,8 @@
       ]
     },
     "/Users/revanthgundala/SnapshotV2/contracts/SnapshotV2.sol": {
-      "lastModificationDate": 1685304803593,
-      "contentHash": "83f41cbb70691c48a3b8de0adaa88d7a",
+      "lastModificationDate": 1685649843943,
+      "contentHash": "a5103cc27a77c599d931a208a5d300ee",
       "sourceName": "contracts/SnapshotV2.sol",
       "solcConfig": {
         "version": "0.8.9",
@@ -3707,14 +3707,12 @@
         "@chainlink/contracts/src/v0.8/AutomationCompatible.sol",
         "@openzeppelin/contracts/security/ReentrancyGuard.sol",
         "./Verifier.sol",
-        "./MerkleTree.sol",
-        "./VRFv2SubscriptionManager.sol"
+        "./MerkleTree.sol"
       ],
       "versionPragmas": [
         "^0.8.7"
       ],
       "artifacts": [
-        "IVRFv2SubscriptionManager",
         "IVerifier",
         "SnapshotV2"
       ]

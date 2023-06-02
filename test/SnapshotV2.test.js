@@ -71,6 +71,7 @@ async function prove(witness) {
 
 describe("SnapshotV2", () => {
     let snapshotV2;
+    let name;
    // let verifier;
     let provider;
     let signer;
@@ -86,6 +87,7 @@ describe("SnapshotV2", () => {
         // SnapShotV2ABI = require("../artifacts/contracts/SnapshotV2.sol/SnapshotV2.json").abi;
         VerifierABI = require("../artifacts/contracts/Verifier.sol/Verifier.json").abi;
         PoseidonABI = poseidonContract.generateABI(NUM_INPUTS);
+        name = "Uniswap"
     });
 
     beforeEach(async () => {
@@ -103,7 +105,7 @@ describe("SnapshotV2", () => {
         poseidonContractInstance = new ethers.Contract(Poseidon, PoseidonABI, signer);
 
         const snapShotV2ContractFactory = await ethers.getContractFactory("SnapshotV2");
-        args = [SEPOLIA_FUNCTIONS_ORACLE_ADDRESS, Verifier, MERKLE_TREE_HEIGHT, Poseidon, VRFv2SubscriptionManager, SUB_ID, FULFILL_GAS_LIMIT]
+        args = [Verifier, MERKLE_TREE_HEIGHT, Poseidon]
         snapshotV2 = await snapShotV2ContractFactory.deploy(...args);
         await snapshotV2.deployed();
     });
@@ -116,7 +118,7 @@ describe("SnapshotV2", () => {
 
     describe("Constructor", () => {
         it("should create new messages array", async () => {
-            const messages = await snapshotV2.getMessages();
+            const messages = await snapshotV2.getMessages(name);
             assert.equal(messages.length, 0);
         });
         it("should instantiate verifier contract", async () => {
@@ -128,20 +130,20 @@ describe("SnapshotV2", () => {
     describe("insertIntoTree", () => {
         it("should emit an event", async () => {
             const insert = Insert.new(poseidon);
-            const tx = await snapshotV2.insertIntoTree(insert.commitment, signer.address);
+            const tx = await snapshotV2.insertIntoTree(insert.commitment);
             const txReceipt = await tx.wait(1);
             assert.equal(txReceipt.events[0].event, "Inserted");
         });
         it("should emit the correct commitment", async () => {
             const insert = Insert.new(poseidon);
-            const tx = await snapshotV2.insertIntoTree(insert.commitment, signer.address);
+            const tx = await snapshotV2.insertIntoTree(insert.commitment);
             const txReceipt = await tx.wait(1);
             assert.equal(txReceipt.events[0].args.commitment, insert.commitment);
         });
 
         it("should insert a new leaf into the tree", async () => {
             const insert = Insert.new(poseidon);
-            const tx = await snapshotV2.insertIntoTree(insert.commitment, signer.address);
+            const tx = await snapshotV2.insertIntoTree(insert.commitment);
             const txReceipt = await tx.wait(1);
             insert.leafIndex = txReceipt.events[0].args.insertedIndex;
             const rootFromContract = await snapshotV2.getLastRoot();
@@ -157,7 +159,7 @@ describe("SnapshotV2", () => {
         it("should add the message to the messages array and emit an event", async () => {
             // Insert a message
             const insert = Insert.new(poseidon);
-            let tx = await snapshotV2.insertIntoTree(insert.commitment, signer.address);
+            let tx = await snapshotV2.insertIntoTree(insert.commitment);
             let txReceipt = await tx.wait(1);
             assert.equal(txReceipt.events[0].args.commitment, insert.commitment);
             insert.leafIndex = txReceipt.events[0].args.insertedIndex;
@@ -182,20 +184,21 @@ describe("SnapshotV2", () => {
             }
             const solProof = await prove(witness);
             const postMessageWithProoftx = await snapshotV2.postMessageWithProof(
+                name,
                 message,
                 nullifierHash,
                 root,
                 solProof
             );
             txReceipt = await postMessageWithProoftx.wait(1);
-            const messages = await snapshotV2.getMessages();
+            const messages = await snapshotV2.getMessages(name);
             assert.equal(messages[0], message);
             assert.equal(txReceipt.events[0].event, "messagePosted");
         });
         it("should prevent a user from posting more than one message", async () => {
             // Insert a message
             const insert = Insert.new(poseidon);
-            let tx = await snapshotV2.insertIntoTree(insert.commitment, signer.address);
+            let tx = await snapshotV2.insertIntoTree(insert.commitment);
             let txReceipt = await tx.wait(1);
             assert.equal(txReceipt.events[0].args.commitment, insert.commitment);
             insert.leafIndex = txReceipt.events[0].args.insertedIndex;
@@ -221,6 +224,7 @@ describe("SnapshotV2", () => {
             const message1 = "Hello world";
             const message2 = "Goodbye world";
             await snapshotV2.postMessageWithProof(
+              name,
                 message1,
                 nullifierHash,
                 root,
@@ -228,6 +232,7 @@ describe("SnapshotV2", () => {
             );
             try{
                 await snapshotV2.postMessageWithProof(
+                  name,
                     message2,
                     nullifierHash,
                     root,
@@ -244,7 +249,7 @@ describe("SnapshotV2", () => {
         it("should prevent a user from posting from a non-existent root", async () => {
             // Insert a message
             const insert = Insert.new(poseidon);
-            let tx = await snapshotV2.insertIntoTree(insert.commitment, signer.address);
+            let tx = await snapshotV2.insertIntoTree(insert.commitment);
             let txReceipt = await tx.wait(1);
             assert.equal(txReceipt.events[0].args.commitment, insert.commitment);
             insert.leafIndex = txReceipt.events[0].args.insertedIndex;
@@ -270,6 +275,7 @@ describe("SnapshotV2", () => {
             const message = "Hello world";
             try{
                 await snapshotV2.postMessageWithProof(
+                  name,
                     message,
                     nullifierHash,
                     root,
@@ -293,7 +299,7 @@ describe("SnapshotV2", () => {
 
             // Insert a message
             const insert = Insert.new(poseidon);
-            let tx = await snapshotV2.insertIntoTree(insert.commitment, signer.address);
+            let tx = await snapshotV2.insertIntoTree(insert.commitment);
             let txReceipt = await tx.wait(1);
             assert.equal(txReceipt.events[0].args.commitment, insert.commitment);
             insert.leafIndex = txReceipt.events[0].args.insertedIndex;
@@ -318,14 +324,22 @@ describe("SnapshotV2", () => {
             }
             const solProof = await prove(witness);
             const postMessageWithProoftx = await snapshotV2.postMessageWithProof(
-                message,
-                nullifierHash,
-                root,
-                solProof
-            );
+              name,
+              message,
+              nullifierHash,
+              root,
+              solProof
+          );
             isUsed = await snapshotV2.isNullifierUsed(nullifierHash);
             assert.equal(isUsed, true);
         })
+    });
+
+    describe("addName", () => {
+      it("should add the name to the names array", async () => {
+        const tx = await snapshotV2.addName(name);
+        assert.equal(await snapshotV2.names(0), name);
+      });
     });
 
      describe("clearMessages", () => {
@@ -335,18 +349,10 @@ describe("SnapshotV2", () => {
             const event = receipt.events[0];
             assert.equal(event.event, "messagesCleared");
         });
-        // it("should deploy a new Merkle Tree contract", async () => {
-        //     let tempAddress = MerkleTree;
-        //     const tx = await snapshotV2.clearMessages();
-        //     const receipt = await tx.wait();
-        //     const event = receipt.events[0];
-        //     const newMerkleTree = event.args[1];
-        //     assert(newMerkleTree !== null);
-        // });
         it("should clear the messages array", async () => {
             // Insert a message
             const insert = Insert.new(poseidon);
-            let tx = await snapshotV2.insertIntoTree(insert.commitment, signer.address);
+            let tx = await snapshotV2.insertIntoTree(insert.commitment);
             let txReceipt = await tx.wait(1);
             assert.equal(txReceipt.events[0].args.commitment, insert.commitment);
             insert.leafIndex = txReceipt.events[0].args.insertedIndex;
@@ -355,6 +361,7 @@ describe("SnapshotV2", () => {
             await tree.insert(insert.commitment);
             assert.equal(tree.totalElements, await snapshotV2.nextIndex());
             assert.equal(await tree.root(), await snapshotV2.roots(1));
+            await snapshotV2.addName(name);
             // Post
             const message = "Hello world";
             const nullifierHash = insert.nullifierHash;
@@ -371,16 +378,18 @@ describe("SnapshotV2", () => {
             }
             const solProof = await prove(witness);
             const postMessageWithProoftx = await snapshotV2.postMessageWithProof(
-                message,
-                nullifierHash,
-                root,
-                solProof
-            );
-            let messages = await snapshotV2.getMessages();
+              name,
+              message,
+              nullifierHash,
+              root,
+              solProof
+          );
+              
+            let messages = await snapshotV2.getMessages(name);
             assert.equal(messages.length, 1);
             tx = await snapshotV2.clearMessages();
             await tx.wait(1);
-            messages = await snapshotV2.getMessages();
+            messages = await snapshotV2.getMessages(name);
             assert.equal(messages.length, 0);
         });
    
@@ -398,13 +407,14 @@ describe("SnapshotV2", () => {
           await snapshotV2.clearMessages();
         }
           insert = Insert.new(poseidon);
-          const tx = await snapshotV2.insertIntoTree(insert.commitment, signer.address);
+          const tx = await snapshotV2.insertIntoTree(insert.commitment);
           let txReceipt = await tx.wait(1);
           insert.leafIndex = txReceipt.events[0].args.insertedIndex;
           const rootFromContract = await snapshotV2.getLastRoot();
           await tree.insert(insert.commitment);
           const rootJS = await tree.root();
           assert.equal(rootFromContract.toString(), rootJS.toString());
+          await snapshotV2.addName(name);
           // Post
           message = i === Math.pow(2, MERKLE_TREE_HEIGHT) ? "Goodbye world" : "Hello world" + i.toString();
           const nullifierHash = insert.nullifierHash;
@@ -421,19 +431,20 @@ describe("SnapshotV2", () => {
           }
           const solProof = await prove(witness);
           const postMessageWithProoftx = await snapshotV2.postMessageWithProof(
-              message,
-              nullifierHash,
-              root,
-              solProof
-          );
+            name,
+            message,
+            nullifierHash,
+            root,
+            solProof
+        );
           txReceipt = await postMessageWithProoftx.wait(1);
           if(i !== Math.pow(2, MERKLE_TREE_HEIGHT)) {
-            messages = await snapshotV2.getMessages();
+            messages = await snapshotV2.getMessages(name);
             assert.equal(messages[i], message);
           }
       }
 
-      messages = await snapshotV2.getMessages();
+      messages = await snapshotV2.getMessages(name);
       assert.equal(messages[0], lastMessage);
   }).timeout(1000000);
 });
@@ -448,13 +459,15 @@ describe("SnapshotV2", () => {
 
 });
 
-// --> Also, still need to test space and time/functions and automation
-
 
 // have an off-chain whitelist generated by sql command select
+// this off chain whitelist is called on frontend and stored into a state variable
 // allow wallets from that whitelist to generate a committment and insert into tree
 // Allow them to post a message from a different wallet
-// message posts get inserted into a new db on SxT -> Use chainlink functions to post(fullfill request)
+// message posts get inserted into a new db on SxT 
+
+// figure out how to do correct GET request to get wallets with SxT
+// figre out if I can post to my own db the messages from each protocol with SXt or use dbeaver
 
 
-// idea-> automation only and then have functions just call messages from sxt
+// finally -> figoure out how to use sxt for use-cases on chain

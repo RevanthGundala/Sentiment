@@ -1,9 +1,11 @@
+const {SnapShotV2} = require("../deployed-contracts.json");
+
 async function main() {
   // 1 LINK is sufficient for this example
   const linkAmount = "1";
   // Set your consumer contract address. This contract will
   // be added as an approved consumer of the subscription.
-  const consumer = "0x85Cb1Ea924b37AB5D14fCf865568C0eC1486eC90";
+  const consumer = SnapShotV2;
 
   // Network-specific configs
   // Polygon Mumbai LINK 0x326C977E6efc84E512bB9C30f76E30c160eD06FB

@@ -6,15 +6,12 @@ import {ethers} from "ethers";
 import { buildPoseidon } from "circomlibjs";
 import PostMessage from "./PostMessage";
 
-export default function Insert({_isSelected, _tree}){
+export default function Insert({_isSelected}){
     const [isSelected, setIsSelected] = useState(_isSelected);
     const [isLoading, setIsLoading] = useState(false);
-    const [tree, setTree] = useState(_tree);
     const [nullifierHash, setNullifierHash] = useState("");
     const [root, setRoot] = useState("");
     const [witness, setWitness] = useState("");
-    const [proof, setProof] = useState("");
-
 
     function poseidonHash(poseidon, inputs) {
         const hash = poseidon(inputs.map((x) => ethers.BigNumber.from(x).toBigInt()));
@@ -74,7 +71,25 @@ export default function Insert({_isSelected, _tree}){
             functionName: "insertIntoTree",
             args: [insert.commitment]
         })
-        await tree.insert(insert.commitment);
+        const response = await fetch("/api/post", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(insert.commitment),
+        })
+        if(!response.ok){
+            throw new Error(response.status);
+        }
+        const result = await response.text();
+        console.log(result);
+        const tree = await fetch("/api/get", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+        console.log(tree);
         const {_root, _path_elements, _path_index} = await tree.path(insert.leafIndex);
         setRoot(_root);
         setNullifierHash(insert.nullifierHash);

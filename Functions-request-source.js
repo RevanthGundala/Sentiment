@@ -1,46 +1,59 @@
-// This example shows how to make a call to an open API (no authentication required)
-// to retrieve asset price from a symbol(e.g., ETH) to another symbol (e.g., USD)
-
-// CryptoCompare API https://min-api.cryptocompare.com/documentation?key=Price&cat=multipleSymbolsFullPriceEndpoint
-
-// Refer to https://github.com/smartcontractkit/functions-hardhat-starter-kit#javascript-code
-
-// Arguments can be provided when a request is initated on-chain and used in the request source code as shown below
-const fromSymbol = args[0]
-const toSymbol = args[1]
-
 // make HTTP request
-const url = `https://min-api.cryptocompare.com/data/pricemultifull`
-console.log(`HTTP GET Request to ${url}?fsyms=${fromSymbol}&tsyms=${toSymbol}`)
+const url = 'https://hackathon.spaceandtime.dev/v1/sql/dql'
+let sqlText = `SELECT
+      FROM_ADDRESS AS WALLET_ADDRESS,
+      COUNT(*) AS TRANSACTION_COUNT
+    FROM
+      ETHEREUM.TRANSACTIONS
+    GROUP BY
+      FROM_ADDRESS
+    ORDER BY
+      CAST(TRANSACTION_COUNT AS DECIMAL(38)) DESC
+    LIMIT
+      10;`;
+      
+let resourceId = 'ETHEREUM.TRANSACTIONS'
+const access_token = "eyJ0eXBlIjoiYWNjZXNzIiwia2lkIjoiNGE2NTUwNjYtZTMyMS00NWFjLThiZWMtZDViYzg4ZWUzYTIzIiwiYWxnIjoiRVMyNTYifQ.eyJpYXQiOjE2ODU1ODk0ODEsIm5iZiI6MTY4NTU4OTQ4MSwiZXhwIjoxNjg1NTkwOTgxLCJ0eXBlIjoiYWNjZXNzIiwidXNlciI6IlJHIiwic3Vic2NyaXB0aW9uIjoiYTIyOTNlOGMtMDczMi00MTM4LWFmMDAtMDY4MGM4YWVkZjU3Iiwic2Vzc2lvbiI6ImNiYmNjNTQ1ODE4N2Y3OGM5N2EwNjYyNSIsInNzbl9leHAiOjE2ODU2NzU4ODEyMDgsIml0ZXJhdGlvbiI6ImMyMTc2NTY5NmRjZWJmYTY3YzhiZGQ1ZCJ9.7x8tHpGFEdPnEfLWvDFE3RnHoR-MzRjtd6wbYdwS83WuhMPdYbJcQ-wN4_KVQxYELeSAerIe40nZJuFOaA7h8w";
+// let options = {
+//   method: 'POST',
+//   headers: {
+//     accept: 'application/json',
+//     'content-type': 'application/json',
+//     authorization: `Bearer ${access_token}`
+//   },
+//   body: JSON.stringify({
+//     sqlText: sqlText,
+//     resourceId: resourceId
+//   })
+// };
 
 // construct the HTTP Request object. See: https://github.com/smartcontractkit/functions-hardhat-starter-kit#javascript-code
 // params used for URL query parameters
-// Example of query: https://min-api.cryptocompare.com/data/pricemultifull?fsyms=ETH&tsyms=USD
-const cryptoCompareRequest = Functions.makeHttpRequest({
+const uniswapRequest = Functions.makeHttpRequest({
   url: url,
-  params: {
-    fsyms: fromSymbol,
-    tsyms: toSymbol,
+  method: "POST",
+  headers: {
+    accept: 'application/json',
+    'content-type': 'application/json',
+    authorization: `Bearer ${access_token}`
   },
+  data: {
+    sqlText: sqlText,
+    resourceId: resourceId
+  }
+
 })
 
 // Execute the API request (Promise)
-const cryptoCompareResponse = await cryptoCompareRequest
-if (cryptoCompareResponse.error) {
-  console.error(cryptoCompareResponse.error)
-  throw Error("Request failed")
+const uniswapResponse = await uniswapRequest
+if (uniswapResponse.error) {
+  console.error(uniswapResponse.error)
+  throw Error("Request to Uniswap failed")
 }
 
-const data = cryptoCompareResponse["data"]
-if (data.Response === "Error") {
-  console.error(data.Message)
-  throw Error(`Functional error. Read message: ${data.Message}`)
-}
+const selectedAddresses = [];
+uniswapResponse.map((address, i) => {
+  selectedAddresses.push(address.WALLET_ADDRESS)
+})
 
-// extract the price
-const price = data["RAW"][fromSymbol][toSymbol]["PRICE"]
-console.log(`${fromSymbol} price is: ${price.toFixed(2)} ${toSymbol}`)
-
-// Solidity doesn't support decimals so multiply by 100 and round to the nearest integer
-// Use Functions.encodeUint256 to encode an unsigned integer to a Buffer
-return Functions.encodeUint256(Math.round(price * 100))
+return Functions.encodeBytes(selectedAddresses);

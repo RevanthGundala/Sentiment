@@ -1,6 +1,7 @@
 const ethcrypto = require("eth-crypto");
 const axios = require("axios");
-const { SEPOLIA_FUNCTIONS_ORACLE_ADDRESS } = require("../constants");
+const {SnapShotV2} = require("../deployed-contracts.json")
+const { SEPOLIA_FUNCTIONS_ORACLE_ADDRESS, SUB_ID } = require("../constants");
 const fs = require("fs").promises;
 
 async function main() {
@@ -15,9 +16,9 @@ async function main() {
   const signer = new ethers.Wallet(signerPrivateKey, provider);
 
   // Consumer contract
-  const consumerAddress = "0x85Cb1Ea924b37AB5D14fCf865568C0eC1486eC90";
+  const consumerAddress = SnapShotV2;
   const consumerAbiPath =
-    "./artifacts/contracts/FunctionsConsumer.sol/FunctionsConsumer.json";
+    "../artifacts/contracts/SnapShotV2.sol/SnapShotV2.json";
 
   const contractAbi = JSON.parse(
     await fs.readFile(consumerAbiPath, "utf8")
@@ -34,13 +35,13 @@ async function main() {
 
   // Chainlink Functions request config
   // Chainlink Functions subscription ID
-  const subscriptionId = "307";
+  const subscriptionId = SUB_ID;
   // Gas limit for the Chainlink Functions request
   const requestGas = 5500000;
 
   // Default example
   const source = await fs.readFile("./Functions-request-source.js", "utf8");
-  const args = ["ETH", "USD"];
+  const args = [];
 
   // Tutorial 6
   // const source = await fs.readFile(
