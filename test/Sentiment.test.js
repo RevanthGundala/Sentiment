@@ -1,5 +1,5 @@
 const { assert, expect } = require("chai");
-const {SnapShotV2, Verifier, Poseidon, VRFv2SubscriptionManager} = require("../deployed-contracts.json");
+const {Sentiment, Verifier, Poseidon, VRFv2SubscriptionManager} = require("../deployed-contracts.json");
 const { ethers, network } = require("hardhat");
 const { poseidonContract, buildPoseidon } = require("circomlibjs");
 const {MerkleTreeJS} = require("../constants/merkleTree.js");
@@ -69,8 +69,8 @@ async function prove(witness) {
   return solProof;
 }
 
-describe("SnapshotV2", () => {
-    let snapshotV2;
+describe("Sentiment", () => {
+    let sentiment;
     let name;
    // let verifier;
     let provider;
@@ -79,12 +79,12 @@ describe("SnapshotV2", () => {
     let poseidonContractInstance;
     let VerifierABI;
     let PoseidonABI;
-    // let SnapShotV2ABI;
+    // let SentimentABI;
 
     before(async () => {
         console.log("Testing on " + network.name + "\n");
         poseidon = await buildPoseidon();
-        // SnapShotV2ABI = require("../artifacts/contracts/SnapshotV2.sol/SnapshotV2.json").abi;
+        // SentimentABI = require("../artifacts/contracts/Sentiment.sol/Sentiment.json").abi;
         VerifierABI = require("../artifacts/contracts/Verifier.sol/Verifier.json").abi;
         PoseidonABI = poseidonContract.generateABI(NUM_INPUTS);
         name = "Uniswap"
@@ -104,10 +104,10 @@ describe("SnapshotV2", () => {
         //verifier = new ethers.Contract(Verifier, VerifierABI, signer);
         poseidonContractInstance = new ethers.Contract(Poseidon, PoseidonABI, signer);
 
-        const snapShotV2ContractFactory = await ethers.getContractFactory("SnapshotV2");
+        const SentimentContractFactory = await ethers.getContractFactory("Sentiment");
         args = [SEPOLIA_FUNCTIONS_ORACLE_ADDRESS, Verifier, MERKLE_TREE_HEIGHT, Poseidon, SUB_ID, FULFILL_GAS_LIMIT]
-        snapshotV2 = await snapShotV2ContractFactory.deploy(...args);
-        await snapshotV2.deployed();
+        sentiment = await SentimentContractFactory.deploy(...args);
+        await sentiment.deployed();
     });
 
     it("generates same poseidon hash", async function () {
@@ -118,11 +118,11 @@ describe("SnapshotV2", () => {
 
     describe("Constructor", () => {
         it("should create new messages array", async () => {
-            const messages = await snapshotV2.getMessages(name);
+            const messages = await sentiment.getMessages(name);
             assert.equal(messages.length, 0);
         });
         it("should instantiate verifier contract", async () => {
-            const verifier = await snapshotV2.verifier();
+            const verifier = await sentiment.verifier();
             assert.equal(verifier, Verifier);
         });
     });
@@ -130,23 +130,23 @@ describe("SnapshotV2", () => {
     describe("insertIntoTree", () => {
         it("should emit an event", async () => {
             const insert = Insert.new(poseidon);
-            const tx = await snapshotV2.insertIntoTree(insert.commitment);
+            const tx = await sentiment.insertIntoTree(insert.commitment);
             const txReceipt = await tx.wait(1);
             assert.equal(txReceipt.events[0].event, "Inserted");
         });
         it("should emit the correct commitment", async () => {
             const insert = Insert.new(poseidon);
-            const tx = await snapshotV2.insertIntoTree(insert.commitment);
+            const tx = await sentiment.insertIntoTree(insert.commitment);
             const txReceipt = await tx.wait(1);
             assert.equal(txReceipt.events[0].args.commitment, insert.commitment);
         });
 
         it("should insert a new leaf into the tree", async () => {
             const insert = Insert.new(poseidon);
-            const tx = await snapshotV2.insertIntoTree(insert.commitment);
+            const tx = await sentiment.insertIntoTree(insert.commitment);
             const txReceipt = await tx.wait(1);
             insert.leafIndex = txReceipt.events[0].args.insertedIndex;
-            const rootFromContract = await snapshotV2.getLastRoot();
+            const rootFromContract = await sentiment.getLastRoot();
             const tree = new MerkleTreeJS(MERKLE_TREE_HEIGHT, "test", new PoseidonHasher(poseidon));
             await tree.insert(insert.commitment);
             const rootJS = await tree.root();
@@ -159,15 +159,15 @@ describe("SnapshotV2", () => {
         it("should add the message to the messages array and emit an event", async () => {
             // Insert a message
             const insert = Insert.new(poseidon);
-            let tx = await snapshotV2.insertIntoTree(insert.commitment);
+            let tx = await sentiment.insertIntoTree(insert.commitment);
             let txReceipt = await tx.wait(1);
             assert.equal(txReceipt.events[0].args.commitment, insert.commitment);
             insert.leafIndex = txReceipt.events[0].args.insertedIndex;
             const tree = new MerkleTreeJS(MERKLE_TREE_HEIGHT, "test", new PoseidonHasher(poseidon));
-            assert.equal(await tree.root(), await snapshotV2.roots(0));
+            assert.equal(await tree.root(), await sentiment.roots(0));
             await tree.insert(insert.commitment);
-            assert.equal(tree.totalElements, await snapshotV2.nextIndex());
-            assert.equal(await tree.root(), await snapshotV2.roots(1));
+            assert.equal(tree.totalElements, await sentiment.nextIndex());
+            assert.equal(await tree.root(), await sentiment.roots(1));
             // Post
             const message = "Hello world";
             const nullifierHash = insert.nullifierHash;
@@ -183,7 +183,7 @@ describe("SnapshotV2", () => {
                 pathIndices: path_index
             }
             const solProof = await prove(witness);
-            const postMessageWithProoftx = await snapshotV2.postMessageWithProof(
+            const postMessageWithProoftx = await sentiment.postMessageWithProof(
                 name,
                 message,
                 nullifierHash,
@@ -191,22 +191,22 @@ describe("SnapshotV2", () => {
                 solProof
             );
             txReceipt = await postMessageWithProoftx.wait(1);
-            const messages = await snapshotV2.getMessages(name);
+            const messages = await sentiment.getMessages(name);
             assert.equal(messages[0], message);
             assert.equal(txReceipt.events[0].event, "messagePosted");
         });
         it("should prevent a user from posting more than one message", async () => {
             // Insert a message
             const insert = Insert.new(poseidon);
-            let tx = await snapshotV2.insertIntoTree(insert.commitment);
+            let tx = await sentiment.insertIntoTree(insert.commitment);
             let txReceipt = await tx.wait(1);
             assert.equal(txReceipt.events[0].args.commitment, insert.commitment);
             insert.leafIndex = txReceipt.events[0].args.insertedIndex;
             const tree = new MerkleTreeJS(MERKLE_TREE_HEIGHT, "test", new PoseidonHasher(poseidon));
-            assert.equal(await tree.root(), await snapshotV2.roots(0));
+            assert.equal(await tree.root(), await sentiment.roots(0));
             await tree.insert(insert.commitment);
-            assert.equal(tree.totalElements, await snapshotV2.nextIndex());
-            assert.equal(await tree.root(), await snapshotV2.roots(1));
+            assert.equal(tree.totalElements, await sentiment.nextIndex());
+            assert.equal(await tree.root(), await sentiment.roots(1));
             // Post
             const nullifierHash = insert.nullifierHash;
             const {root, path_elements, path_index} = await tree.path(
@@ -223,7 +223,7 @@ describe("SnapshotV2", () => {
             const solProof = await prove(witness);
             const message1 = "Hello world";
             const message2 = "Goodbye world";
-            await snapshotV2.postMessageWithProof(
+            await sentiment.postMessageWithProof(
               name,
                 message1,
                 nullifierHash,
@@ -231,7 +231,7 @@ describe("SnapshotV2", () => {
                 solProof
             );
             try{
-                await snapshotV2.postMessageWithProof(
+                await sentiment.postMessageWithProof(
                   name,
                     message2,
                     nullifierHash,
@@ -249,7 +249,7 @@ describe("SnapshotV2", () => {
         it("should prevent a user from posting from a non-existent root", async () => {
             // Insert a message
             const insert = Insert.new(poseidon);
-            let tx = await snapshotV2.insertIntoTree(insert.commitment);
+            let tx = await sentiment.insertIntoTree(insert.commitment);
             let txReceipt = await tx.wait(1);
             assert.equal(txReceipt.events[0].args.commitment, insert.commitment);
             insert.leafIndex = txReceipt.events[0].args.insertedIndex;
@@ -274,7 +274,7 @@ describe("SnapshotV2", () => {
             const solProof = await prove(witness);
             const message = "Hello world";
             try{
-                await snapshotV2.postMessageWithProof(
+                await sentiment.postMessageWithProof(
                   name,
                     message,
                     nullifierHash,
@@ -294,20 +294,20 @@ describe("SnapshotV2", () => {
     describe("isNullifierUsed", () => {
         it("should check if the nullifier is used", async () => {
             let nullifier = poseidonHash(poseidon, [1, 2])
-            let isUsed = await snapshotV2.isNullifierUsed(nullifier);
+            let isUsed = await sentiment.isNullifierUsed(nullifier);
             assert.equal(isUsed, false);
 
             // Insert a message
             const insert = Insert.new(poseidon);
-            let tx = await snapshotV2.insertIntoTree(insert.commitment);
+            let tx = await sentiment.insertIntoTree(insert.commitment);
             let txReceipt = await tx.wait(1);
             assert.equal(txReceipt.events[0].args.commitment, insert.commitment);
             insert.leafIndex = txReceipt.events[0].args.insertedIndex;
             const tree = new MerkleTreeJS(MERKLE_TREE_HEIGHT, "test", new PoseidonHasher(poseidon));
-            assert.equal(await tree.root(), await snapshotV2.roots(0));
+            assert.equal(await tree.root(), await sentiment.roots(0));
             await tree.insert(insert.commitment);
-            assert.equal(tree.totalElements, await snapshotV2.nextIndex());
-            assert.equal(await tree.root(), await snapshotV2.roots(1));
+            assert.equal(tree.totalElements, await sentiment.nextIndex());
+            assert.equal(await tree.root(), await sentiment.roots(1));
             // Post
             const message = "Hello world";
             const nullifierHash = insert.nullifierHash;
@@ -323,139 +323,140 @@ describe("SnapshotV2", () => {
                 pathIndices: path_index
             }
             const solProof = await prove(witness);
-            const postMessageWithProoftx = await snapshotV2.postMessageWithProof(
+            const postMessageWithProoftx = await sentiment.postMessageWithProof(
               name,
               message,
               nullifierHash,
               root,
               solProof
           );
-            isUsed = await snapshotV2.isNullifierUsed(nullifierHash);
+            isUsed = await sentiment.isNullifierUsed(nullifierHash);
             assert.equal(isUsed, true);
         })
     });
 
     describe("addName", () => {
       it("should add the name to the names array", async () => {
-        const tx = await snapshotV2.addName(name);
-        assert.equal(await snapshotV2.names(0), name);
+        const tx = await sentiment.addName(name);
+        assert.equal(await sentiment.names(0), name);
       });
     });
 
-     describe("clearMessages", () => {
-        it("should emit an event", async () => {
-            const tx = await snapshotV2.clearMessages();
-            const receipt = await tx.wait();
-            const event = receipt.events[0];
-            assert.equal(event.event, "messagesCleared");
-        });
-        it("should clear the messages array", async () => {
-            // Insert a message
-            const insert = Insert.new(poseidon);
-            let tx = await snapshotV2.insertIntoTree(insert.commitment);
-            let txReceipt = await tx.wait(1);
-            assert.equal(txReceipt.events[0].args.commitment, insert.commitment);
-            insert.leafIndex = txReceipt.events[0].args.insertedIndex;
-            const tree = new MerkleTreeJS(MERKLE_TREE_HEIGHT, "test", new PoseidonHasher(poseidon));
-            assert.equal(await tree.root(), await snapshotV2.roots(0));
-            await tree.insert(insert.commitment);
-            assert.equal(tree.totalElements, await snapshotV2.nextIndex());
-            assert.equal(await tree.root(), await snapshotV2.roots(1));
-            await snapshotV2.addName(name);
-            // Post
-            const message = "Hello world";
-            const nullifierHash = insert.nullifierHash;
-            const {root, path_elements, path_index} = await tree.path(
-                insert.leafIndex
-            );
-            const witness = {
-                root: root,
-                nullifierHash: nullifierHash,
-                // Private
-                nullifier: ethers.BigNumber.from(insert.nullifier).toString(),
-                pathElements: path_elements,
-                pathIndices: path_index
-            }
-            const solProof = await prove(witness);
-            const postMessageWithProoftx = await snapshotV2.postMessageWithProof(
-              name,
-              message,
-              nullifierHash,
-              root,
-              solProof
-          );
+        // TESTING ONLY
+//      describe("clearMessages", () => {
+//         it("should emit an event", async () => {
+//             const tx = await Sentiment.clearMessages();
+//             const receipt = await tx.wait();
+//             const event = receipt.events[0];
+//             assert.equal(event.event, "messagesCleared");
+//         });
+//         it("should clear the messages array", async () => {
+//             // Insert a message
+//             const insert = Insert.new(poseidon);
+//             let tx = await Sentiment.insertIntoTree(insert.commitment);
+//             let txReceipt = await tx.wait(1);
+//             assert.equal(txReceipt.events[0].args.commitment, insert.commitment);
+//             insert.leafIndex = txReceipt.events[0].args.insertedIndex;
+//             const tree = new MerkleTreeJS(MERKLE_TREE_HEIGHT, "test", new PoseidonHasher(poseidon));
+//             assert.equal(await tree.root(), await Sentiment.roots(0));
+//             await tree.insert(insert.commitment);
+//             assert.equal(tree.totalElements, await Sentiment.nextIndex());
+//             assert.equal(await tree.root(), await Sentiment.roots(1));
+//             await Sentiment.addName(name);
+//             // Post
+//             const message = "Hello world";
+//             const nullifierHash = insert.nullifierHash;
+//             const {root, path_elements, path_index} = await tree.path(
+//                 insert.leafIndex
+//             );
+//             const witness = {
+//                 root: root,
+//                 nullifierHash: nullifierHash,
+//                 // Private
+//                 nullifier: ethers.BigNumber.from(insert.nullifier).toString(),
+//                 pathElements: path_elements,
+//                 pathIndices: path_index
+//             }
+//             const solProof = await prove(witness);
+//             const postMessageWithProoftx = await Sentiment.postMessageWithProof(
+//               name,
+//               message,
+//               nullifierHash,
+//               root,
+//               solProof
+//           );
               
-            let messages = await snapshotV2.getMessages(name);
-            assert.equal(messages.length, 1);
-            tx = await snapshotV2.clearMessages();
-            await tx.wait(1);
-            messages = await snapshotV2.getMessages(name);
-            assert.equal(messages.length, 0);
-        });
+//             let messages = await Sentiment.getMessages(name);
+//             assert.equal(messages.length, 1);
+//             tx = await Sentiment.clearMessages();
+//             await tx.wait(1);
+//             messages = await Sentiment.getMessages(name);
+//             assert.equal(messages.length, 0);
+//         });
    
 
-    it("should reset the tree", async () => {
-      // Insert a message
-      let tree = new MerkleTreeJS(MERKLE_TREE_HEIGHT, "test", new PoseidonHasher(poseidon));
-      let insert;
-      let message;
-      let messages;
-      const lastMessage = "Goodbye world";
-      for(let i = 0; i <= Math.pow(2, MERKLE_TREE_HEIGHT); i++) {
-        if(i === Math.pow(2, MERKLE_TREE_HEIGHT)) {
-          tree = new MerkleTreeJS(MERKLE_TREE_HEIGHT, "test", new PoseidonHasher(poseidon));
-          await snapshotV2.clearMessages();
-        }
-          insert = Insert.new(poseidon);
-          const tx = await snapshotV2.insertIntoTree(insert.commitment);
-          let txReceipt = await tx.wait(1);
-          insert.leafIndex = txReceipt.events[0].args.insertedIndex;
-          const rootFromContract = await snapshotV2.getLastRoot();
-          await tree.insert(insert.commitment);
-          const rootJS = await tree.root();
-          assert.equal(rootFromContract.toString(), rootJS.toString());
-          await snapshotV2.addName(name);
-          // Post
-          message = i === Math.pow(2, MERKLE_TREE_HEIGHT) ? "Goodbye world" : "Hello world" + i.toString();
-          const nullifierHash = insert.nullifierHash;
-          const {root, path_elements, path_index} = await tree.path(
-              insert.leafIndex
-          );
-          const witness = {
-              root: root,
-              nullifierHash: nullifierHash,
-              // Private
-              nullifier: ethers.BigNumber.from(insert.nullifier).toString(),
-              pathElements: path_elements,
-              pathIndices: path_index
-          }
-          const solProof = await prove(witness);
-          const postMessageWithProoftx = await snapshotV2.postMessageWithProof(
-            name,
-            message,
-            nullifierHash,
-            root,
-            solProof
-        );
-          txReceipt = await postMessageWithProoftx.wait(1);
-          if(i !== Math.pow(2, MERKLE_TREE_HEIGHT)) {
-            messages = await snapshotV2.getMessages(name);
-            assert.equal(messages[i], message);
-          }
-      }
+//     it("should reset the tree", async () => {
+//       // Insert a message
+//       let tree = new MerkleTreeJS(MERKLE_TREE_HEIGHT, "test", new PoseidonHasher(poseidon));
+//       let insert;
+//       let message;
+//       let messages;
+//       const lastMessage = "Goodbye world";
+//       for(let i = 0; i <= Math.pow(2, MERKLE_TREE_HEIGHT); i++) {
+//         if(i === Math.pow(2, MERKLE_TREE_HEIGHT)) {
+//           tree = new MerkleTreeJS(MERKLE_TREE_HEIGHT, "test", new PoseidonHasher(poseidon));
+//           await Sentiment.clearMessages();
+//         }
+//           insert = Insert.new(poseidon);
+//           const tx = await Sentiment.insertIntoTree(insert.commitment);
+//           let txReceipt = await tx.wait(1);
+//           insert.leafIndex = txReceipt.events[0].args.insertedIndex;
+//           const rootFromContract = await Sentiment.getLastRoot();
+//           await tree.insert(insert.commitment);
+//           const rootJS = await tree.root();
+//           assert.equal(rootFromContract.toString(), rootJS.toString());
+//           await Sentiment.addName(name);
+//           // Post
+//           message = i === Math.pow(2, MERKLE_TREE_HEIGHT) ? "Goodbye world" : "Hello world" + i.toString();
+//           const nullifierHash = insert.nullifierHash;
+//           const {root, path_elements, path_index} = await tree.path(
+//               insert.leafIndex
+//           );
+//           const witness = {
+//               root: root,
+//               nullifierHash: nullifierHash,
+//               // Private
+//               nullifier: ethers.BigNumber.from(insert.nullifier).toString(),
+//               pathElements: path_elements,
+//               pathIndices: path_index
+//           }
+//           const solProof = await prove(witness);
+//           const postMessageWithProoftx = await Sentiment.postMessageWithProof(
+//             name,
+//             message,
+//             nullifierHash,
+//             root,
+//             solProof
+//         );
+//           txReceipt = await postMessageWithProoftx.wait(1);
+//           if(i !== Math.pow(2, MERKLE_TREE_HEIGHT)) {
+//             messages = await Sentiment.getMessages(name);
+//             assert.equal(messages[i], message);
+//           }
+//       }
 
-      messages = await snapshotV2.getMessages(name);
-      assert.equal(messages[0], lastMessage);
-  }).timeout(1000000);
-});
+//       messages = await Sentiment.getMessages(name);
+//       assert.equal(messages[0], lastMessage);
+//   }).timeout(1000000);
+// });
 
-    if(network.name !== "localhost" && network.name !== "hardhat") {
-        describe("fulfullRequest", () => {
-            it("should emit an event", async () => {
-                const tx = await snapshotV2.getWallets();
-            });
-        });
-    }
+    // if(network.name !== "localhost" && network.name !== "hardhat") {
+    //     describe("Chainlink Automated Functions", () => {
+    //         it("should emit an event", async () => {
+    //             const tx = await Sentiment.getWallets();
+    //         });
+    //     });
+    // }
 
 });
 

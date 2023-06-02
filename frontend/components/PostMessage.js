@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Box, Textarea, IconButton, Button, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, ModalCloseButton } from "@chakra-ui/react";
 import { writeContract } from "@wagmi/core";
 import { BsSendFill } from "react-icons/bs";
-import { SNAPSHOTV2_ABI, SNAPSHOTV2_ADDRESS } from "../constants/index";
+import { SENTIMENT_ABI, SENTIMENT_ADDRESS } from "../constants/index";
 
 export default function PostMessage() {
   const [message, setMessage] = useState("");
@@ -24,8 +24,8 @@ export default function PostMessage() {
     setIsLoading(true);
     const solProof = await prove(witness);
     await writeContract({
-      address: SNAPSHOTV2_ADDRESS,
-      abi: SNAPSHOTV2_ABI,
+      address: SENTIMENT_ADDRESS,
+      abi: SENTIMENT_ABI,
       method: "postMessageWithProof",
       args: [message, nullifierHash, root, solProof],
     });

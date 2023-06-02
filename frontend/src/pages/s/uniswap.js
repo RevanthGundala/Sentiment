@@ -4,9 +4,9 @@ import PostMessage from "../../../components/PostMessage";
 import { useState, useEffect } from "react";
 import { Box, VStack, Input } from "@chakra-ui/react";
 import { useAccount } from "wagmi";
-import { writeContract } from "@wagmi/core";
+import { writeContract, readContract } from "@wagmi/core";
 import { useRouter } from "next/router";
-import { SNAPSHOTV2_ABI, SNAPSHOTV2_ADDRESS } from "../../../constants";
+import { SENTIMENT_ABI, SENTIMENT_ADDRESS } from "../../../constants";
 
 export default function Uniswap() {
   const [selectedAddresses, setSelectedAddresses] = useState(["0x1", "0x2"]);
@@ -27,9 +27,9 @@ export default function Uniswap() {
   async function getSelectedAddresses() {
     setIsLoading(true);
     console.log("Requesting selected addresses");
-    let addressesList = await writeContract({
-      address: SNAPSHOTV2_ADDRESS,
-      abi: SNAPSHOTV2_ABI,
+    let addressesList = await readContract({
+      address: SENTIMENT_ADDRESS,
+      abi: SENTIMENT_ABI,
       method: "getSelectedAddresses",
     });
     setSelectedAddresses(addressesList);
@@ -38,9 +38,9 @@ export default function Uniswap() {
 
   async function getMessages() {
     setIsLoading(true);
-    let messagesList = await writeContract({
-      address: SNAPSHOTV2_ADDRESS,
-      abi: SNAPSHOTV2_ABI,
+    let messagesList = await readContract({
+      address: SENTIMENT_ADDRESS,
+      abi: SENTIMENT_ABI,
       method: "getMessages",
       params: [pathname.substring(1)],
     });
@@ -50,15 +50,15 @@ export default function Uniswap() {
 
   useEffect(() => {
     // getMessages();
-    if (selectedAddresses.length === 0) {
-      getSelectedAddresses();
+    // getSelectedAddresses();
+    const storedSelectedAddresses = localStorage.getItem("selectedAddresses");
+    if (storedSelectedAddresses !== selectedAddresses) {
+      deleteTree();
+      localStorage.setItem("selectedAddresses", selectedAddresses);
     }
     if (selectedAddresses.includes(address)) {
       setIsSelected(true);
     }
-
-    const interval = setInterval(deleteTree, 1209600000);
-    return () => clearInterval(interval);
   }, []);
 
 

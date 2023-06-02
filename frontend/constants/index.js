@@ -1,7 +1,7 @@
-const SNAPSHOTV2_ADDRESS = "";
-const SNAPSHOTV2_ABI = [];
+const SENTIMENT_ADDRESS = "";
+const SENTIMENT_ABI = [];
 
 module.exports = {
-    SNAPSHOTV2_ABI,
-    SNAPSHOTV2_ADDRESS
+    SENTIMENT_ABI,
+    SENTIMENT_ADDRESS
 }

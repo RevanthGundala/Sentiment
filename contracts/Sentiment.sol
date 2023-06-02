@@ -14,14 +14,13 @@ struct Proof {
     uint256[2] c;
 }
 
-error SnapshotV2__RandomWordsNotUpdated(string message);
-error SnapshotV2__CommitmentAlreadyUsed(string message);
-error SnapshotV2__InvalidProof(string message);
-error SnapshotV2__NullifierAlreadyUsed(string message);
-error SnapshotV2__RootNotKnown(string message);
-error SnapshotV2__TimeInterval(string message);
-error SnapshotV2__NotSelected(string message);
-error SnapshotV2__SenderIsNotAutomater(string message);
+error Sentiment__RandomWordsNotUpdated(string message);
+error Sentiment__CommitmentAlreadyUsed(string message);
+error Sentiment__InvalidProof(string message);
+error Sentiment__NullifierAlreadyUsed(string message);
+error Sentiment__RootNotKnown(string message);
+error Sentiment__TimeInterval(string message);
+error Sentiment__NotSelected(string message);
 
 interface IVerifier {
     function verifyProof(
@@ -32,7 +31,7 @@ interface IVerifier {
     ) external returns (bool r);
 }
 
-contract SnapshotV2 is
+contract Sentiment is
     FunctionsClient,
     ConfirmedOwner,
     AutomationCompatibleInterface,
@@ -87,17 +86,11 @@ contract SnapshotV2 is
         lastUpkeepTimeStamp = block.timestamp;
     }
 
-    modifier onlyAutomater(address walletAddress) {
-        // if (msg.sender != address(automation))
-        //     revert SnapshotV2__SenderIsNotAutomater("Sender is not automater");
-        _;
-    }
-
     modifier selectedAddress(address walletAddress) {
         // For testing only:
         selectedAddresses[walletAddress] = true;
         if (!selectedAddresses[walletAddress])
-            revert SnapshotV2__NotSelected("Address not selected");
+            revert Sentiment__NotSelected("Address not selected");
         _;
     }
 
@@ -108,7 +101,7 @@ contract SnapshotV2 is
         bytes32 _commitment
     ) external nonReentrant selectedAddress(msg.sender) {
         if (commitments[_commitment])
-            revert SnapshotV2__CommitmentAlreadyUsed("Commitment already used");
+            revert Sentiment__CommitmentAlreadyUsed("Commitment already used");
 
         uint32 insertedIndex = _insert(_commitment);
         commitments[_commitment] = true;
@@ -127,14 +120,14 @@ contract SnapshotV2 is
         Proof memory _proof
     ) external nonReentrant {
         if (nullifiers[_nullifierHash])
-            revert SnapshotV2__NullifierAlreadyUsed("Nullifier already used");
+            revert Sentiment__NullifierAlreadyUsed("Nullifier already used");
 
         if (!isKnownRoot(_root))
-            revert SnapshotV2__RootNotKnown("Root not known");
+            revert Sentiment__RootNotKnown("Root not known");
 
         uint[2] memory publicInputs = [uint(_root), uint(_nullifierHash)];
         if (!verifier.verifyProof(_proof.a, _proof.b, _proof.c, publicInputs))
-            revert SnapshotV2__InvalidProof("Invalid proof");
+            revert Sentiment__InvalidProof("Invalid proof");
 
         nullifiers[_nullifierHash] = true;
         messages[name].push(_message);
@@ -185,7 +178,7 @@ contract SnapshotV2 is
     function performUpkeep(bytes calldata) external override {
         (bool upkeepNeeded, ) = checkUpkeep("");
         if (!upkeepNeeded)
-            revert SnapshotV2__TimeInterval("Time interval not met");
+            revert Sentiment__TimeInterval("Time interval not met");
         lastUpkeepTimeStamp = block.timestamp;
         upkeepCounter = upkeepCounter + 1;
 
@@ -194,6 +187,7 @@ contract SnapshotV2 is
             requestCBOR,
             fulfillGasLimit
         );
+        clearMessages();
 
         s_pendingRequests[requestId] = s_oracle.getRegistry();
         emit RequestSent(requestId);
@@ -208,7 +202,6 @@ contract SnapshotV2 is
         latestResponse = response;
         latestError = err;
         emit OCRResponse(requestId, response, err);
-        clearMessages();
         for (uint i = 0; i < response.length; i++) {
             address wallet = abi.decode(response, (address));
             selectedAddresses[wallet] = true;
@@ -232,7 +225,7 @@ contract SnapshotV2 is
     /**
     @dev Deletes the list of messages and emits messagesCleared event
   */
-    function clearMessages() public onlyAutomater(msg.sender) {
+    function clearMessages() internal {
         uint length = names.length;
         for (uint i = 0; i < length; i++) {
             delete messages[names[i]];

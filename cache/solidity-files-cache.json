@@ -3674,49 +3674,6 @@
         "VRFCoordinatorV2Interface"
       ]
     },
-    "/Users/revanthgundala/SnapshotV2/contracts/SnapshotV2.sol": {
-      "lastModificationDate": 1685736331428,
-      "contentHash": "ab6d85cded714ea6680b5b66e4ede949",
-      "sourceName": "contracts/SnapshotV2.sol",
-      "solcConfig": {
-        "version": "0.8.9",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 200
-          },
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "./dev/functions/FunctionsClient.sol",
-        "@chainlink/contracts/src/v0.8/ConfirmedOwner.sol",
-        "@chainlink/contracts/src/v0.8/AutomationCompatible.sol",
-        "@openzeppelin/contracts/security/ReentrancyGuard.sol",
-        "./Verifier.sol",
-        "./MerkleTree.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.7"
-      ],
-      "artifacts": [
-        "IVerifier",
-        "SnapshotV2"
-      ]
-    },
     "/Users/revanthgundala/SnapshotV2/contracts/Verifier.sol": {
       "lastModificationDate": 1685231799788,
       "contentHash": "f4082c487808df2e1fe219eaae972ec4",
@@ -5063,6 +5020,49 @@
       ],
       "artifacts": [
         "SafeMathChainlink"
+      ]
+    },
+    "/Users/revanthgundala/SnapshotV2/contracts/Sentiment.sol": {
+      "lastModificationDate": 1685747849176,
+      "contentHash": "cdb46106eb511e5b56c54f095a758b69",
+      "sourceName": "contracts/Sentiment.sol",
+      "solcConfig": {
+        "version": "0.8.9",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./dev/functions/FunctionsClient.sol",
+        "@chainlink/contracts/src/v0.8/ConfirmedOwner.sol",
+        "@chainlink/contracts/src/v0.8/AutomationCompatible.sol",
+        "@openzeppelin/contracts/security/ReentrancyGuard.sol",
+        "./Verifier.sol",
+        "./MerkleTree.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.7"
+      ],
+      "artifacts": [
+        "IVerifier",
+        "Sentiment"
       ]
     }
   }

@@ -5,7 +5,7 @@ import { Box, Input, Button } from "@chakra-ui/react";
 import {ethers} from "ethers"; 
 import { buildPoseidon } from "circomlibjs";
 import PostMessage from "./PostMessage";
-import { SNAPSHOTV2_ABI, SNAPSHOTV2_ADDRESS } from "../constants";
+import { SENTIMENT_ABI, SENTIMENT_ADDRESS } from "../constants";
 
 export default function Insert({_isSelected}){
     const [isSelected, setIsSelected] = useState(_isSelected);
@@ -55,8 +55,8 @@ export default function Insert({_isSelected}){
         setIsLoading(true);
         const insert = Insert.new(poseidon);
         const tx = await writeContract({
-            address: SNAPSHOTV2_ADDRESS,
-            abi: SNAPSHOTV2_ABI,
+            address: SENTIMENT_ADDRESS,
+            abi: SENTIMENT_ABI,
             functionName: "insertIntoTree",
             args: [insert.commitment]
         })

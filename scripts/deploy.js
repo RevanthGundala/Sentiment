@@ -21,13 +21,13 @@ async function main() {
   await VRFv2SubscriptionManagerContract.deployed();
   console.log("VRFv2SubscriptionManager deployed to:", VRFv2SubscriptionManagerContract.address);
 
-  const snapShotV2ContractFactory = await ethers.getContractFactory("SnapshotV2");
+  const sentimentContractFactory = await ethers.getContractFactory("Sentiment");
   args = [SEPOLIA_FUNCTIONS_ORACLE_ADDRESS, verifierContract.address, MERKLE_TREE_HEIGHT, poseidonContract.address, SUB_ID, FULFILL_GAS_LIMIT]
-  const snapShotV2Contract = await snapShotV2ContractFactory.deploy(...args);
-  await snapShotV2Contract.deployed();
-  console.log("SnapShotV2 deployed to:", snapShotV2Contract.address);
+  const sentimentContract = await sentimentContractFactory.deploy(...args);
+  await sentimentContract.deployed();
+  console.log("sentiment deployed to:", sentimentContract.address);
 
-  const message = JSON.stringify({Verifier: verifierContract.address, SnapShotV2: snapShotV2Contract.address, Poseidon: poseidonContract.address, VRFv2SubscriptionManager: VRFv2SubscriptionManagerContract.address}, null, 2);
+  const message = JSON.stringify({Verifier: verifierContract.address, Sentiment: sentimentContract.address, Poseidon: poseidonContract.address, VRFv2SubscriptionManager: VRFv2SubscriptionManagerContract.address}, null, 2);
   fs.writeFileSync("deployed-contracts.json", message);
 }
 
