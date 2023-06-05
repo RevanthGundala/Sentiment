@@ -13,5 +13,9 @@ Sentiment is an off-chain governance alternative solution that tries to address 
 3. ```cd frontend```
 4. ```npm run dev```
 
+# Video 
+
+# Live Demo
+
 
 
