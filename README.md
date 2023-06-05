@@ -8,7 +8,7 @@ Sentiment is an off-chain governance alternative solution that tries to address 
 
 # Getting Started
 
-1. Clone the Repo
+1. ```git clone https://github.com/RevanthGundala/Sentiment.git```
 2. ```npm i```
 3. ```cd frontend```
 4. ```npm run dev```
